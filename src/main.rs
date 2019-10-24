@@ -1,7 +1,10 @@
+use cargo_project;
 use colored::*;
 use crc::{self, crc16, Hasher16};
-
+use goblin::elf::program_header::*;
 use hidapi::{HidApi, HidDevice};
+use std::convert::TryInto;
+
 use std::{
     fs::File,
     io::Read,
@@ -49,9 +52,9 @@ fn main() {
     // Remove first two args which is the calling application name and the `uf2` command from cargo.
     let mut args: Vec<_> = std::env::args().skip(2).collect();
 
-    //todo, keep as iter. difficult because we want to filter map remove two items at once.
+    // todo, keep as iter. difficult because we want to filter map remove two items at once.
     // Remove our args as cargo build does not understand them.
-    let flags = ["--address", "-a", "--pid", "-p", "--vid", "-v"].iter();
+    let flags = ["--pid", "--vid"].iter();
     for flag in flags {
         if let Some(index) = args.iter().position(|x| x == flag) {
             args.remove(index);
@@ -59,13 +62,8 @@ fn main() {
         }
     }
 
-    args.push("--".to_string());
-    args.push("-O".to_string());
-    args.push("binary".to_string());
-    args.push("./uf2.bin".to_string());
-
-    Command::new("cargo")
-        .arg("objcopy")
+    let status = Command::new("cargo")
+        .arg("build")
         .args(args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -73,6 +71,15 @@ fn main() {
         .unwrap()
         .wait()
         .unwrap();
+
+    if !status.success() {
+        use std::os::unix::process::ExitStatusExt;
+        let status = status
+            .code()
+            .or_else(|| if cfg!(unix) { status.signal() } else { None })
+            .unwrap_or(1);
+        std::process::exit(status);
+    }
 
     let api = HidApi::new().expect("Couldn't find system usb");
 
@@ -113,12 +120,7 @@ fn main() {
     // Start timer.
     let instant = Instant::now();
 
-    flash(
-        std::path::Path::new("./uf2.bin").to_path_buf(),
-        opt.address,
-        &d,
-    )
-    .unwrap();
+    flash_elf(path, &d).unwrap();
 
     // Stop timer.
     let elapsed = instant.elapsed();
@@ -145,24 +147,35 @@ impl MemoryRange for core::ops::Range<u32> {
     }
 }
 
-fn flash(path: PathBuf, address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
+/// Starts the download of a elf file.
+fn flash_elf(path: PathBuf, d: &HidDevice) -> Result<(), Error> {
+    let mut file = File::open(path)?;
+    let mut buffer = vec![];
+    file.read_to_end(&mut buffer)?;
+
+    if let Ok(binary) = goblin::elf::Elf::parse(&buffer.as_slice()) {
+        for ph in &binary.program_headers {
+            if ph.p_type == PT_LOAD && ph.p_filesz > 0 {
+                let address = ph.p_paddr as u32;
+                let data = &buffer[(ph.p_offset as usize)..][..ph.p_filesz as usize];
+
+                flash(data, address, &d).unwrap();
+            }
+        }
+    }
+    Ok(())
+}
+
+fn flash(binary: &[u8], address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
     let bininfo: BinInfoResult = BinInfo {}.send(&d)?;
 
     if bininfo.mode != BinInfoMode::Bootloader {
         let _ = StartFlash {}.send(&d)?;
     }
 
-    let mut f = File::open(path)?;
-
-    let mut binary = Vec::new();
-    f.read_to_end(&mut binary)?;
-
     //pad zeros to page size
     let padded_num_pages = (binary.len() as f64 / f64::from(bininfo.flash_page_size)).ceil() as u32;
     let padded_size = padded_num_pages * bininfo.flash_page_size;
-    for _i in 0..(padded_size as usize - binary.len()) {
-        binary.push(0x0);
-    }
 
     // get checksums of existing pages
     let top_address = address + padded_size as u32;
@@ -189,7 +202,15 @@ fn flash(path: PathBuf, address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
     // only write changed contents
     for (page_index, page) in binary.chunks(bininfo.flash_page_size as usize).enumerate() {
         let mut digest1 = crc16::Digest::new_custom(crc16::X25, 0u16, 0u16, crc::CalcType::Normal);
-        digest1.write(&page);
+
+        //pad with zeros in case its last page and under size
+        if (page.len() as u32) < bininfo.flash_page_size {
+            let mut padded = page.to_vec();
+            padded.resize(bininfo.flash_page_size.try_into().unwrap(), 0);
+            digest1.write(&padded);
+        } else {
+            digest1.write(&page);
+        }
 
         if digest1.sum16() != device_checksums[page_index] {
             let target_address = address + bininfo.flash_page_size * page_index as u32;
@@ -204,14 +225,6 @@ fn flash(path: PathBuf, address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
     println!("Success");
     let _ = ResetIntoApp {}.send(&d)?;
     Ok(())
-}
-
-fn parse_hex_32(input: &str) -> Result<u32, std::num::ParseIntError> {
-    if input.starts_with("0x") {
-        u32::from_str_radix(&input[2..], 16)
-    } else {
-        input.parse::<u32>()
-    }
 }
 
 fn parse_hex_16(input: &str) -> Result<u16, std::num::ParseIntError> {
@@ -235,10 +248,8 @@ struct Opt {
     #[structopt(name = "target", long = "target")]
     target: Option<String>,
 
-    #[structopt(short = "p", name = "pid", long = "pid", parse(try_from_str = parse_hex_16))]
+    #[structopt(name = "pid", long = "pid", parse(try_from_str = parse_hex_16))]
     pid: Option<u16>,
-    #[structopt(short = "v", name = "vid", long = "vid", parse(try_from_str = parse_hex_16))]
+    #[structopt(name = "vid", long = "vid",  parse(try_from_str = parse_hex_16))]
     vid: Option<u16>,
-    #[structopt(short = "a", name = "address", long = "address", parse(try_from_str = parse_hex_32))]
-    address: u32,
 }
