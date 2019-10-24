@@ -5,10 +5,13 @@ authors = ["Jacob <jacobrosenthal@gmail.com>"]
 edition = "2018"
 
 
+[patch.crates-io]
+uf2 = { git = 'https://github.com/jacobrosenthal/uf2-rs', rev="d43c6f51f1d079837e76c8b29811888c8f861f15"}
+
 [dependencies]
 structopt = "0.3.2"
 colored = "1.8.0"
-uf2 = {path ="../uf2-rs"}
+uf2 = "0.1.0"
 hidapi = "0.5.2"
 crc = "1.9.0"
 goblin = "0.0.24"

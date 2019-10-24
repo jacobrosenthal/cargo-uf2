@@ -2,7 +2,8 @@
 Replaces the cargo run command to flash to uf2 bootloaders.
 
 ## install
-`cargo install cargo-uf2`
+Not published yet, for now
+`cargo install --git https://github.com/jacobrosenthal/cargo-uf2`
 
 ## use
 Head to a uf2 project directory, you can skip running cargo build, we'll do that for you, and you can pass all the usual commands to us like --example and --release, if the builds succeeds we open the usb device and copy the file over.
