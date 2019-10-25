@@ -6,7 +6,7 @@ edition = "2018"
 
 
 [patch.crates-io]
-uf2 = { git = 'https://github.com/jacobrosenthal/uf2-rs', rev="d43c6f51f1d079837e76c8b29811888c8f861f15"}
+uf2 = { git = 'https://github.com/jacobrosenthal/uf2-rs', rev="61e7d2e20538e3c9c7b08de29a249e8190abdd39"}
 
 [dependencies]
 structopt = "0.3.2"
@@ -17,3 +17,4 @@ crc = "1.9.0"
 goblin = "0.0.24"
 hexdump = "0.1.0"
 cargo-project = "0.2.2"
+pretty_env_logger = "0.3.0"

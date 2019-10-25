@@ -37,3 +37,5 @@ trying "" "Apple Internal Keyboard / Trackpad"
 thread 'main' panicked at 'Are you sure device is plugged in and in uf2 mode?', src/libcore/option.rs:1166:5
 
 ```
+
+If you find an error, be sure to run with debug to see where in the process it failed `RUST_LOG=debug cargo uf2 --release --example ferris_img`

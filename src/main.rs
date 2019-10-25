@@ -3,7 +3,6 @@ use colored::*;
 use crc::{self, crc16, Hasher16};
 use goblin::elf::program_header::*;
 use hidapi::{HidApi, HidDevice};
-use std::convert::TryInto;
 
 use std::{
     fs::File,
@@ -16,6 +15,9 @@ use structopt::StructOpt;
 use uf2::*;
 
 fn main() {
+    // Initialize the logging backend.
+    pretty_env_logger::init();
+
     // Get commandline options.
     // Skip the first arg which is the calling application name.
     let opt = Opt::from_iter(std::env::args().skip(1));
@@ -159,7 +161,7 @@ fn flash_elf(path: PathBuf, d: &HidDevice) -> Result<(), Error> {
                 let address = ph.p_paddr as u32;
                 let data = &buffer[(ph.p_offset as usize)..][..ph.p_filesz as usize];
 
-                flash(data, address, &d).unwrap();
+                flash(data, address, &d)?;
             }
         }
     }
@@ -206,7 +208,7 @@ fn flash(binary: &[u8], address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
         //pad with zeros in case its last page and under size
         if (page.len() as u32) < bininfo.flash_page_size {
             let mut padded = page.to_vec();
-            padded.resize(bininfo.flash_page_size.try_into().unwrap(), 0);
+            padded.resize(bininfo.flash_page_size as usize, 0);
             digest1.write(&padded);
         } else {
             digest1.write(&page);
@@ -222,7 +224,6 @@ fn flash(binary: &[u8], address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
         }
     }
 
-    println!("Success");
     let _ = ResetIntoApp {}.send(&d)?;
     Ok(())
 }
