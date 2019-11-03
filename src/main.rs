@@ -1,9 +1,9 @@
 use cargo_project;
 use colored::*;
 // use crc::{self, crc16, Hasher16};
+
 use goblin::elf::program_header::*;
 use hidapi::{HidApi, HidDevice};
-
 use maplit::hashmap;
 use std::{
     fs::File,
@@ -163,9 +163,9 @@ impl MemoryRange for core::ops::Range<u32> {
 
 /// Starts the download of a elf file.
 fn flash_elf(path: PathBuf, d: &HidDevice) -> Result<(), Error> {
-    let mut file = File::open(path)?;
+    let mut file = File::open(path).unwrap();
     let mut buffer = vec![];
-    file.read_to_end(&mut buffer)?;
+    file.read_to_end(&mut buffer).unwrap();
 
     if let Ok(binary) = goblin::elf::Elf::parse(&buffer.as_slice()) {
         for ph in &binary.program_headers {
@@ -177,67 +177,6 @@ fn flash_elf(path: PathBuf, d: &HidDevice) -> Result<(), Error> {
             }
         }
     }
-    Ok(())
-}
-
-fn flash(binary: &[u8], address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
-    let bininfo: BinInfoResponse = BinInfo {}.send(&d)?;
-
-    if bininfo.mode != BinInfoMode::Bootloader {
-        let _ = StartFlash {}.send(&d)?;
-    }
-
-    //pad zeros to page size
-    // let padded_num_pages = (binary.len() as f64 / f64::from(bininfo.flash_page_size)).ceil() as u32;
-    // let padded_size = padded_num_pages * bininfo.flash_page_size;
-
-    // get checksums of existing pages
-    // let top_address = address + padded_size as u32;
-    // let max_pages = bininfo.max_message_size / 2 - 2;
-    // let steps = max_pages * bininfo.flash_page_size;
-    // let mut device_checksums = vec![];
-
-    // for target_address in (address..top_address).step_by(steps as usize) {
-    //     let pages_left = (top_address - target_address) / bininfo.flash_page_size;
-
-    //     let num_pages = if pages_left < max_pages {
-    //         pages_left
-    //     } else {
-    //         max_pages
-    //     };
-    //     let chk: ChksumPagesResponse = ChksumPages {
-    //         target_address,
-    //         num_pages,
-    //     }
-    //     .send(&d)?;
-    //     device_checksums.extend_from_slice(&chk.chksums[..]);
-    // }
-
-    // only write changed contents
-    for (page_index, page) in binary.chunks(bininfo.flash_page_size as usize).enumerate() {
-        // let mut digest1 = crc16::Digest::new_custom(crc16::X25, 0u16, 0u16, crc::CalcType::Normal);
-
-        //pad with zeros in case its last page and under size
-        if (page.len() as u32) < bininfo.flash_page_size {
-            let mut padded = page.to_vec();
-            padded.resize(bininfo.flash_page_size as usize, 0);
-            // digest1.write(&padded);
-        }
-        // else {
-        //     digest1.write(&page);
-        // }
-
-        // if digest1.sum16() != device_checksums[page_index] {
-        let target_address = address + bininfo.flash_page_size * page_index as u32;
-        let _ = WriteFlashPage {
-            target_address,
-            data: page.to_vec(),
-        }
-        .send(&d)?;
-        // }
-    }
-
-    let _ = ResetIntoApp {}.send(&d)?;
     Ok(())
 }
 
