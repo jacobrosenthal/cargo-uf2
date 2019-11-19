@@ -239,6 +239,7 @@ fn parse_hex_16(input: &str) -> Result<u16, std::num::ParseIntError> {
 
 #[derive(Debug, StructOpt)]
 struct Opt {
+    // `cargo build` arguments
     #[structopt(name = "binary", long = "bin")]
     bin: Option<String>,
     #[structopt(name = "example", long = "example")]
@@ -249,6 +250,14 @@ struct Opt {
     release: bool,
     #[structopt(name = "target", long = "target")]
     target: Option<String>,
+    #[structopt(name = "PATH", long = "manifest-path", parse(from_os_str))]
+    manifest_path: Option<PathBuf>,
+    #[structopt(long)]
+    no_default_features: bool,
+    #[structopt(long)]
+    all_features: bool,
+    #[structopt(long)]
+    features: Vec<String>,
 
     #[structopt(name = "pid", long = "pid", parse(try_from_str = parse_hex_16))]
     pid: Option<u16>,
