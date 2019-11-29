@@ -6,18 +6,17 @@ edition = "2018"
 
 
 [patch.crates-io]
-uf2 = { git = 'https://github.com/jacobrosenthal/uf2-rs', rev="39501b2375b114f5ec525c9dd29a043846dd36d0"}
-# 1.9 got yanked, still waiting on new_custom
-crc = {git="https://github.com/mrhooray/crc-rs.git", rev="878fcc85b9b04fb4af8c3fb3bc9b7e9d9686cecc"}
+uf2 = { git = 'https://github.com/jacobrosenthal/uf2-rs', rev="7a7412aac538852f5aa44f652fee7acda47879a1"}
 
 [dependencies]
 structopt = "0.3.2"
 colored = "1.8.0"
 uf2 = "0.1.0"
 hidapi = "0.5.2"
-crc = "2.0.0"
 goblin = "0.0.24"
 hexdump = "0.1.0"
 cargo-project = "0.2.2"
 pretty_env_logger = "0.3.0"
 maplit = "1.0.2"
+crc-any = {version = "2.2.3", default-features = false }
+log = "0.4.6"
