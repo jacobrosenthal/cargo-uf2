@@ -6,7 +6,7 @@ edition = "2018"
 
 
 [patch.crates-io]
-uf2 = { git = 'https://github.com/jacobrosenthal/uf2-rs', branch="crcany"}
+uf2 = { git = 'https://github.com/jacobrosenthal/uf2-rs', rev="7a7412aac538852f5aa44f652fee7acda47879a1"}
 
 [dependencies]
 structopt = "0.3.2"

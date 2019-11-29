@@ -92,7 +92,7 @@ dependencies = [
  "maplit 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "pretty_env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "structopt 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "uf2 0.1.0 (git+https://github.com/jacobrosenthal/uf2-rs?branch=crcany)",
+ "uf2 0.1.0 (git+https://github.com/jacobrosenthal/uf2-rs?rev=7a7412aac538852f5aa44f652fee7acda47879a1)",
 ]
 
 [[package]]
@@ -564,15 +564,11 @@ dependencies = [
 [[package]]
 name = "uf2"
 version = "0.1.0"
-source = "git+https://github.com/jacobrosenthal/uf2-rs?branch=crcany#1c9f4624a6cc2fcf8614e555d901c7559165a56c"
+source = "git+https://github.com/jacobrosenthal/uf2-rs?rev=7a7412aac538852f5aa44f652fee7acda47879a1#7a7412aac538852f5aa44f652fee7acda47879a1"
 dependencies = [
- "crc-any 2.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "hidapi 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "maplit 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "pretty_env_logger 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "scroll 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "structopt 0.3.5 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -705,7 +701,7 @@ dependencies = [
 "checksum thread_local 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)" = "c6b53e329000edc2b34dbe8545fd20e55a333362d0a321909685a19bd28c3f1b"
 "checksum time 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)" = "db8dcfca086c1143c9270ac42a2bbd8a7ee477b78ac8e45b19abfb0cbede4b6f"
 "checksum toml 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)" = "758664fc71a3a69038656bee8b6be6477d2a6c315a6b81f7081f591bffa4111f"
-"checksum uf2 0.1.0 (git+https://github.com/jacobrosenthal/uf2-rs?branch=crcany)" = "<none>"
+"checksum uf2 0.1.0 (git+https://github.com/jacobrosenthal/uf2-rs?rev=7a7412aac538852f5aa44f652fee7acda47879a1)" = "<none>"
 "checksum unicode-segmentation 1.6.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e83e153d1053cbb5a118eeff7fd5be06ed99153f00dbcd8ae310c5fb2b22edc0"
 "checksum unicode-width 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "7007dbd421b92cc6e28410fe7362e2e0a2503394908f417b68ec8d1c364c4e20"
 "checksum unicode-xid 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc72304796d0818e357ead4e000d19c9c174ab23dc11093ac919054d20a6a7fc"

@@ -188,7 +188,9 @@ fn flash(binary: &[u8], address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
         let _ = StartFlash {}.send(&d)?;
     }
 
-    // pad zeros to page size
+    let mut binary = binary.to_owned();
+
+    //pad zeros to page size
     let padded_num_pages = (binary.len() as f64 / f64::from(bininfo.flash_page_size)).ceil() as u32;
     let padded_size = padded_num_pages * bininfo.flash_page_size;
     log::debug!(
@@ -196,6 +198,10 @@ fn flash(binary: &[u8], address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
         binary.len(),
         padded_size
     );
+
+    for _i in 0..(padded_size as usize - binary.len()) {
+        binary.push(0x0);
+    }
 
     // get checksums of existing pages
     let top_address = address + padded_size as u32;
@@ -224,14 +230,7 @@ fn flash(binary: &[u8], address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
     for (page_index, page) in binary.chunks(bininfo.flash_page_size as usize).enumerate() {
         let mut xmodem = CRCu16::crc16xmodem();
 
-        //pad with zeros in case its last page and under size
-        if (page.len() as u32) < bininfo.flash_page_size {
-            let mut padded = page.to_vec();
-            padded.resize(bininfo.flash_page_size as usize, 0);
-            xmodem.digest(&page);
-        } else {
-            xmodem.digest(&page);
-        }
+        xmodem.digest(&page);
 
         if xmodem.get_crc() != device_checksums[page_index] {
             log::debug!(
