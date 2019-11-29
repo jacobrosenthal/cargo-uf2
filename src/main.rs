@@ -1,6 +1,6 @@
 use cargo_project;
 use colored::*;
-// use crc::{self, crc16, Hasher16};
+use crc_any::CRCu16;
 use goblin::elf::program_header::*;
 use hidapi::{HidApi, HidDevice};
 
@@ -182,59 +182,74 @@ fn flash_elf(path: PathBuf, d: &HidDevice) -> Result<(), Error> {
 
 fn flash(binary: &[u8], address: u32, d: &HidDevice) -> Result<(), uf2::Error> {
     let bininfo: BinInfoResponse = BinInfo {}.send(&d)?;
+    log::debug!("{:?}", bininfo);
 
     if bininfo.mode != BinInfoMode::Bootloader {
         let _ = StartFlash {}.send(&d)?;
     }
 
-    //pad zeros to page size
-    // let padded_num_pages = (binary.len() as f64 / f64::from(bininfo.flash_page_size)).ceil() as u32;
-    // let padded_size = padded_num_pages * bininfo.flash_page_size;
+    // pad zeros to page size
+    let padded_num_pages = (binary.len() as f64 / f64::from(bininfo.flash_page_size)).ceil() as u32;
+    let padded_size = padded_num_pages * bininfo.flash_page_size;
+    log::debug!(
+        "binary is {} bytes, padding to {} bytes",
+        binary.len(),
+        padded_size
+    );
 
     // get checksums of existing pages
-    // let top_address = address + padded_size as u32;
-    // let max_pages = bininfo.max_message_size / 2 - 2;
-    // let steps = max_pages * bininfo.flash_page_size;
-    // let mut device_checksums = vec![];
+    let top_address = address + padded_size as u32;
+    let max_pages = bininfo.max_message_size / 2 - 2;
+    let steps = max_pages * bininfo.flash_page_size;
+    let mut device_checksums = vec![];
 
-    // for target_address in (address..top_address).step_by(steps as usize) {
-    //     let pages_left = (top_address - target_address) / bininfo.flash_page_size;
+    for target_address in (address..top_address).step_by(steps as usize) {
+        let pages_left = (top_address - target_address) / bininfo.flash_page_size;
 
-    //     let num_pages = if pages_left < max_pages {
-    //         pages_left
-    //     } else {
-    //         max_pages
-    //     };
-    //     let chk: ChksumPagesResponse = ChksumPages {
-    //         target_address,
-    //         num_pages,
-    //     }
-    //     .send(&d)?;
-    //     device_checksums.extend_from_slice(&chk.chksums[..]);
-    // }
+        let num_pages = if pages_left < max_pages {
+            pages_left
+        } else {
+            max_pages
+        };
+        let chk: ChksumPagesResponse = ChksumPages {
+            target_address,
+            num_pages,
+        }
+        .send(&d)?;
+        device_checksums.extend_from_slice(&chk.chksums[..]);
+    }
+    log::debug!("checksums received {:04X?}", device_checksums);
 
     // only write changed contents
     for (page_index, page) in binary.chunks(bininfo.flash_page_size as usize).enumerate() {
-        // let mut digest1 = crc16::Digest::new_custom(crc16::X25, 0u16, 0u16, crc::CalcType::Normal);
+        let mut xmodem = CRCu16::crc16xmodem();
 
         //pad with zeros in case its last page and under size
         if (page.len() as u32) < bininfo.flash_page_size {
             let mut padded = page.to_vec();
             padded.resize(bininfo.flash_page_size as usize, 0);
-            // digest1.write(&padded);
+            xmodem.digest(&page);
+        } else {
+            xmodem.digest(&page);
         }
-        // else {
-        //     digest1.write(&page);
-        // }
 
-        // if digest1.sum16() != device_checksums[page_index] {
-        let target_address = address + bininfo.flash_page_size * page_index as u32;
-        let _ = WriteFlashPage {
-            target_address,
-            data: page.to_vec(),
+        if xmodem.get_crc() != device_checksums[page_index] {
+            log::debug!(
+                "ours {:04X?} != {:04X?} theirs, updating page {}",
+                xmodem.get_crc(),
+                device_checksums[page_index],
+                page_index,
+            );
+
+            let target_address = address + bininfo.flash_page_size * page_index as u32;
+            let _ = WriteFlashPage {
+                target_address,
+                data: page.to_vec(),
+            }
+            .send(&d)?;
+        } else {
+            log::debug!("not updating page {}", page_index,);
         }
-        .send(&d)?;
-        // }
     }
 
     let _ = ResetIntoApp {}.send(&d)?;
